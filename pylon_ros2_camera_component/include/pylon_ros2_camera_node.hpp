@@ -1656,6 +1656,7 @@ protected:
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr blaze_depth_map_color_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr blaze_confidence_pub_;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr blaze_cam_info_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ros_img_raw_pub_;
 
   // services
   rclcpp::Service<GetIntegerSrv>::SharedPtr get_max_num_buffer_srv_;
@@ -1803,7 +1804,7 @@ protected:
   std::vector<std::size_t> sampling_indices_;
   std::array<float, 256> brightness_exp_lut_;
 
-  bool is_sleeping_;
+  bool is_sleeping_, use_intra_process_comms_;
 
   // diagnostics
   diagnostic_updater::Updater diagnostics_updater_;
