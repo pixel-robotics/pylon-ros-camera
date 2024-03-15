@@ -57,6 +57,7 @@ PylonROS2CameraNode::PylonROS2CameraNode(const rclcpp::NodeOptions& options)
   , brightness_exp_lut_()
   , is_sleeping_(false)
   , diagnostics_updater_(this)
+  , use_intra_process_comms_(options.use_intra_process_comms())
 {
   // information logging severity mode
   rcutils_ret_t __attribute__((unused)) res = rcutils_logging_set_logger_level(LOGGER.get_name(), RCUTILS_LOG_SEVERITY_DEBUG);
@@ -163,7 +164,15 @@ void PylonROS2CameraNode::initPublishers()
   this->component_status_pub_ = this->create_publisher<pylon_ros2_camera_interfaces::msg::ComponentStatus>(msg_name, 5);
 
   msg_name = msg_prefix + "image_raw";
-  this->img_raw_pub_ = image_transport::create_camera_publisher(this, msg_name);
+  // Here
+  if (this->use_intra_process_comms_)
+  {
+    this->ros_img_raw_pub_ = this->create_publisher<sensor_msgs::msg::Image>(msg_name, 10);
+  }
+  else
+  {
+    this->img_raw_pub_ = image_transport::create_camera_publisher(this, msg_name);
+  }
 
   // blaze related topics
   msg_name = msg_prefix + "blaze_cloud"; this->blaze_cloud_topic_name_ = msg_name;
@@ -928,10 +937,10 @@ void PylonROS2CameraNode::spin()
 
   if (!this->pylon_camera_->isBlaze())
   {
-    const bool any_subscriber = (this->img_raw_pub_.getNumSubscribers() != 0 || this->getNumSubscribersRectImagePub() != 0);
+    const bool any_subscriber = (this->use_intra_process_comms_ || this->img_raw_pub_.getNumSubscribers() != 0 || this->getNumSubscribersRectImagePub() != 0);
     if (!this->isSleeping() && any_subscriber)
     {
-      if (any_subscriber)
+      if (this->use_intra_process_comms_ || any_subscriber)
       {
         if (!this->grabImage())
         {
@@ -939,17 +948,6 @@ void PylonROS2CameraNode::spin()
         }
       }
 
-      if (this->img_raw_pub_.getNumSubscribers() > 0)
-      {
-        // get actual cam_info-object in every frame, because it might have
-        // changed due to a 'set_camera_info'-service call
-        sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
-        cam_info.header.stamp = this->img_raw_msg_.header.stamp;
-        // publish via image_transport
-        this->img_raw_pub_.publish(this->img_raw_msg_, cam_info);
-      }
-
-      // this->getNumSubscribersRectImagePub() involves that this->camera_info_manager_->isCalibrated() == true
       if (this->getNumSubscribersRectImagePub() > 0)
       {
         this->cv_bridge_img_rect_->header.stamp = this->img_raw_msg_.header.stamp;
@@ -966,7 +964,7 @@ void PylonROS2CameraNode::spin()
           rect_encoding ="bgr16";
         }
         this->cv_bridge_img_rect_->encoding = rect_encoding;
-        
+
         cv_bridge::CvImagePtr cv_img_raw = cv_bridge::toCvCopy(this->img_raw_msg_, rect_encoding);
         if (cv_img_raw == nullptr)
         {
@@ -979,6 +977,25 @@ void PylonROS2CameraNode::spin()
           this->img_rect_pub_->publish(this->cv_bridge_img_rect_->toImageMsg());
         }
       }
+
+      if (this->use_intra_process_comms_ || this->img_raw_pub_.getNumSubscribers() > 0)
+      {
+        // get actual cam_info-object in every frame, because it might have
+        // changed due to a 'set_camera_info'-service call
+        sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
+        cam_info.header.stamp = this->img_raw_msg_.header.stamp;
+        if (this->use_intra_process_comms_)
+        {
+          // publish directly
+          this->ros_img_raw_pub_->publish(std::move(this->img_raw_msg_));
+        }
+        else
+        {
+          // publish via image_transport
+          this->img_raw_pub_.publish(this->img_raw_msg_, cam_info);
+        }
+      }
+      // this->getNumSubscribersRectImagePub() involves that this->camera_info_manager_->isCalibrated() == true
     }
   }
   else
@@ -2724,7 +2741,7 @@ void PylonROS2CameraNode::setWhiteBalanceCallback(const std::shared_ptr<SetWhite
     {
       response->success = false;
     }
-  } 
+  }
   catch (...)
   {
     response->success = false;

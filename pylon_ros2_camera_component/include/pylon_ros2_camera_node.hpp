@@ -1682,6 +1682,7 @@ protected:
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr blaze_depth_map_color_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr blaze_confidence_pub_;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr blaze_cam_info_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr ros_img_raw_pub_;
 
   // services
   rclcpp::Service<GetIntegerSrv>::SharedPtr get_max_num_buffer_srv_;
@@ -1705,7 +1706,7 @@ protected:
   rclcpp::Service<GetStringSrv>::SharedPtr get_pfs_srv_;
 
   rclcpp::Service<GetPtpStatusSrv>::SharedPtr get_ptp_status_srv_;
-  
+
   rclcpp::Service<SetBinningSrv>::SharedPtr set_binning_srv_;
   rclcpp::Service<SetBrightnessSrv>::SharedPtr set_brightness_srv_;
   rclcpp::Service<SetExposureSrv>::SharedPtr set_exposure_srv_;
@@ -1832,6 +1833,7 @@ protected:
   std::array<float, 256> brightness_exp_lut_{};
 
   bool is_sleeping_{false};
+  bool use_intra_process_comms_;
 
   // diagnostics
   diagnostic_updater::Updater diagnostics_updater_;
