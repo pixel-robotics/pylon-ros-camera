@@ -1628,7 +1628,7 @@ protected:
   PylonROS2CameraParameter pylon_camera_parameter_set_;
   camera_info_manager::CameraInfoManager* camera_info_manager_;
 
-  sensor_msgs::msg::Image img_raw_msg_;
+  sensor_msgs::msg::Image::UniquePtr img_raw_msg_;
 
   cv_bridge::CvImage* cv_bridge_img_rect_;
 

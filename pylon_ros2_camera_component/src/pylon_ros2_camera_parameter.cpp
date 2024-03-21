@@ -405,6 +405,12 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     }
     nh.get_parameter("auto_flash_line_3", this->auto_flash_line_3_);
 
+    if (!nh.has_parameter("sleep_on_startup"))
+    {
+        nh.declare_parameter<bool>("sleep_on_startup", false);
+    }
+    nh.get_parameter("sleep_on_startup", this->sleep_on_startup_);
+
     RCLCPP_WARN(LOGGER, "Autoflash: %i, line2: %i, line3: %i", this->auto_flash_, this->auto_flash_line_2_, this->auto_flash_line_3_);
 
     this->validateParameterSet(nh);

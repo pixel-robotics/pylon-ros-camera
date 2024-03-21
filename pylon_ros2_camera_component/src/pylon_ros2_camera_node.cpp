@@ -70,6 +70,12 @@ PylonROS2CameraNode::PylonROS2CameraNode(const rclcpp::NodeOptions& options)
   if (!this->init())
     return;
 
+
+  if (this->pylon_camera_parameter_set_.sleep_on_startup_)
+  {
+    RCLCPP_INFO(LOGGER, "Camera is set to sleep on startup");
+  }
+  this->is_sleeping_ = this->pylon_camera_parameter_set_.sleep_on_startup_;
   // starting spinning thread
   RCLCPP_INFO_STREAM(LOGGER, "Start image grabbing if node connects to topic with " << "a spinning rate of: " << this->frameRate() << " Hz");
   timer_ = this->create_wall_timer(
@@ -710,16 +716,18 @@ bool PylonROS2CameraNode::startGrabbing()
         });
     }
   }
+  this->img_raw_msg_.release();
+  this->img_raw_msg_ = std::make_unique<sensor_msgs::msg::Image>();
 
-  this->img_raw_msg_.header.frame_id = this->pylon_camera_parameter_set_.cameraFrame();
+  this->img_raw_msg_->header.frame_id = this->pylon_camera_parameter_set_.cameraFrame();
   // Encoding of pixels -- channel meaning, ordering, size
   // taken from the list of strings in include/sensor_msgs/image_encodings.h
-  this->img_raw_msg_.encoding = this->pylon_camera_->currentROSEncoding();
-  this->img_raw_msg_.height = this->pylon_camera_->imageRows();
-  this->img_raw_msg_.width = this->pylon_camera_->imageCols();
+  this->img_raw_msg_->encoding = this->pylon_camera_->currentROSEncoding();
+  this->img_raw_msg_->height = this->pylon_camera_->imageRows();
+  this->img_raw_msg_->width = this->pylon_camera_->imageCols();
   // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
   // already contains the number of channels
-  this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+  this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
 
   if (!this->camera_info_manager_->setCameraName(this->pylon_camera_->deviceUserID()))
   { 
@@ -758,7 +766,7 @@ bool PylonROS2CameraNode::startGrabbing()
         this->setupRectification();
         // set the correct tf frame_id
         sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
-        cam_info.header.frame_id = this->img_raw_msg_.header.frame_id;
+        cam_info.header.frame_id = this->img_raw_msg_->header.frame_id;
         this->camera_info_manager_->setCameraInfo(cam_info);
       }
       else
@@ -943,9 +951,9 @@ void PylonROS2CameraNode::spin()
 
       if (this->getNumSubscribersRectImagePub() > 0)
       {
-        this->cv_bridge_img_rect_->header.stamp = this->img_raw_msg_.header.stamp;
+        this->cv_bridge_img_rect_->header.stamp = this->img_raw_msg_->header.stamp;
         assert(this->pinhole_model_->initialized());
-        cv_bridge::CvImagePtr cv_img_raw = cv_bridge::toCvCopy(this->img_raw_msg_, this->img_raw_msg_.encoding);
+        cv_bridge::CvImagePtr cv_img_raw = cv_bridge::toCvCopy(*this->img_raw_msg_, this->img_raw_msg_->encoding);
         this->pinhole_model_->fromCameraInfo(this->camera_info_manager_->getCameraInfo());
         this->pinhole_model_->rectifyImage(cv_img_raw->image, this->cv_bridge_img_rect_->image);
         this->img_rect_pub_->publish(this->cv_bridge_img_rect_->toImageMsg());
@@ -956,16 +964,22 @@ void PylonROS2CameraNode::spin()
         // get actual cam_info-object in every frame, because it might have
         // changed due to a 'set_camera_info'-service call
         sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
-        cam_info.header.stamp = this->img_raw_msg_.header.stamp;
+        cam_info.header.stamp = this->img_raw_msg_->header.stamp;
         if (this->use_intra_process_comms_)
         {
           // publish directly
           this->ros_img_raw_pub_->publish(std::move(this->img_raw_msg_));
+          this->img_raw_msg_ = std::make_unique<sensor_msgs::msg::Image>();
+          this->img_raw_msg_->header.frame_id = this->pylon_camera_parameter_set_.cameraFrame();
+          this->img_raw_msg_->encoding = this->pylon_camera_->currentROSEncoding();
+          this->img_raw_msg_->height = this->pylon_camera_->imageRows();
+          this->img_raw_msg_->width = this->pylon_camera_->imageCols();
+          this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
         }
         else
         {
           // publish via image_transport
-          this->img_raw_pub_.publish(this->img_raw_msg_, cam_info);
+          this->img_raw_pub_.publish(*this->img_raw_msg_, cam_info);
         }
       }
       // this->getNumSubscribersRectImagePub() involves that this->camera_info_manager_->isCalibrated() == true
@@ -1033,11 +1047,11 @@ bool PylonROS2CameraNode::grabImage()
   {
     // Store current time before the image is transmitted for a more accurate grab time estimation
     auto grab_time = rclcpp::Node::now();
-    if (!this->pylon_camera_->grab(this->img_raw_msg_.data))
+    if (!this->pylon_camera_->grab(this->img_raw_msg_->data))
     {
       return false;
     }
-    this->img_raw_msg_.header.stamp = grab_time;
+    this->img_raw_msg_->header.stamp = grab_time;
   }
   else
   {
@@ -1447,11 +1461,11 @@ bool PylonROS2CameraNode::setROI(const sensor_msgs::msg::RegionOfInterest target
         sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
         cam_info.roi = this->pylon_camera_->currentROI();
         this->camera_info_manager_->setCameraInfo(cam_info);
-        this->img_raw_msg_.width = this->pylon_camera_->imageCols();
-        this->img_raw_msg_.height = this->pylon_camera_->imageRows();
+        this->img_raw_msg_->width = this->pylon_camera_->imageCols();
+        this->img_raw_msg_->height = this->pylon_camera_->imageRows();
         // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
         // already contains the number of channels
-        this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+        this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
         return false;
       }
       r.sleep();
@@ -1461,11 +1475,11 @@ bool PylonROS2CameraNode::setROI(const sensor_msgs::msg::RegionOfInterest target
   sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
   cam_info.roi = this->pylon_camera_->currentROI();
   this->camera_info_manager_->setCameraInfo(cam_info);
-  this->img_raw_msg_.height = this->pylon_camera_->imageRows();
-  this->img_raw_msg_.width = this->pylon_camera_->imageCols();
+  this->img_raw_msg_->height = this->pylon_camera_->imageRows();
+  this->img_raw_msg_->width = this->pylon_camera_->imageCols();
   // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
   // already contains the number of channels
-  this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+  this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
   this->setupSamplingIndices(this->sampling_indices_,
                              this->pylon_camera_->imageRows(),
                              this->pylon_camera_->imageCols(),
@@ -1497,10 +1511,10 @@ bool PylonROS2CameraNode::setBinningX(const size_t& target_binning_x,
         sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
         cam_info.binning_x = this->pylon_camera_->currentBinningX();
         this->camera_info_manager_->setCameraInfo(cam_info);
-        this->img_raw_msg_.width = this->pylon_camera_->imageCols();
+        this->img_raw_msg_->width = this->pylon_camera_->imageCols();
         // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
         // already contains the number of channels
-        this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+        this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
         return false;
       }
 
@@ -1511,10 +1525,10 @@ bool PylonROS2CameraNode::setBinningX(const size_t& target_binning_x,
   sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
   cam_info.binning_x = this->pylon_camera_->currentBinningX();
   this->camera_info_manager_->setCameraInfo(cam_info);
-  this->img_raw_msg_.width = this->pylon_camera_->imageCols();
+  this->img_raw_msg_->width = this->pylon_camera_->imageCols();
   // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
   // already contains the number of channels
-  this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+  this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
   this->setupSamplingIndices(this->sampling_indices_,
                              this->pylon_camera_->imageRows(),
                              this->pylon_camera_->imageCols(),
@@ -1545,10 +1559,10 @@ bool PylonROS2CameraNode::setBinningY(const size_t& target_binning_y,
         sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
         cam_info.binning_y = this->pylon_camera_->currentBinningY();
         this->camera_info_manager_->setCameraInfo(cam_info);
-        this->img_raw_msg_.height = this->pylon_camera_->imageRows();
+        this->img_raw_msg_->height = this->pylon_camera_->imageRows();
         // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
         // already contains the number of channels
-        this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+        this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
         return false;
       }
       r.sleep();
@@ -1558,10 +1572,10 @@ bool PylonROS2CameraNode::setBinningY(const size_t& target_binning_y,
   sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
   cam_info.binning_y = this->pylon_camera_->currentBinningY();
   this->camera_info_manager_->setCameraInfo(cam_info);
-  this->img_raw_msg_.height = this->pylon_camera_->imageRows();
+  this->img_raw_msg_->height = this->pylon_camera_->imageRows();
   // step = full row length in bytes, img_size = (step * rows), imagePixelDepth
   // already contains the number of channels
-  this->img_raw_msg_.step = this->img_raw_msg_.width * this->pylon_camera_->imagePixelDepth();
+  this->img_raw_msg_->step = this->img_raw_msg_->width * this->pylon_camera_->imagePixelDepth();
   this->setupSamplingIndices(this->sampling_indices_,
                              this->pylon_camera_->imageRows(),
                              this->pylon_camera_->imageCols(),
@@ -4596,16 +4610,16 @@ void PylonROS2CameraNode::genSamplingIndicesRec(std::vector<std::size_t>& indice
 float PylonROS2CameraNode::calcCurrentBrightness()
 {
   std::lock_guard<std::recursive_mutex> lock(this->grab_mutex_);
-  if (this->img_raw_msg_.data.empty())
+  if (this->img_raw_msg_->data.empty())
   {
     return 0.0;
   }
 
   float sum = 0.0;
-  if (sensor_msgs::image_encodings::isMono(this->img_raw_msg_.encoding))
+  if (sensor_msgs::image_encodings::isMono(this->img_raw_msg_->encoding))
   {
     // Check if image is expected size so indices don't fall out of bounds
-    if (this->img_raw_msg_.data.size() != this->img_raw_msg_.height * this->img_raw_msg_.width)
+    if (this->img_raw_msg_->data.size() != this->img_raw_msg_->height * this->img_raw_msg_->width)
     {
       return 0.0;
     }
@@ -4613,7 +4627,7 @@ float PylonROS2CameraNode::calcCurrentBrightness()
     // The mean brightness is calculated using a subset of all pixels
     for (const std::size_t& idx : this->sampling_indices_)
     {
-      sum += this->img_raw_msg_.data.at(idx);
+      sum += this->img_raw_msg_->data.at(idx);
     }
     if (sum > 0.0)
     {
@@ -4623,10 +4637,10 @@ float PylonROS2CameraNode::calcCurrentBrightness()
   else
   {
     // The mean brightness is calculated using all pixels and all channels
-    sum = std::accumulate(this->img_raw_msg_.data.begin(), this->img_raw_msg_.data.end(), 0);
+    sum = std::accumulate(this->img_raw_msg_->data.begin(), this->img_raw_msg_->data.end(), 0);
     if (sum > 0.0)
     {
-      sum /= static_cast<float>(this->img_raw_msg_.data.size());
+      sum /= static_cast<float>(this->img_raw_msg_->data.size());
     }
   }
 
@@ -4676,8 +4690,8 @@ void PylonROS2CameraNode::setupRectification()
   {
     this->cv_bridge_img_rect_ = new cv_bridge::CvImage();
   }
-  this->cv_bridge_img_rect_->header = img_raw_msg_.header;
-  this->cv_bridge_img_rect_->encoding = img_raw_msg_.encoding;
+  this->cv_bridge_img_rect_->header = img_raw_msg_->header;
+  this->cv_bridge_img_rect_->encoding = img_raw_msg_->encoding;
 }
 
 std::shared_ptr<GrabImagesAction::Result> PylonROS2CameraNode::grabRawImages(const std::shared_ptr<GrabImagesGoalHandle> goal_handle)
