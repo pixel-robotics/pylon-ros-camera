@@ -95,7 +95,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // camera frame
     RCLCPP_DEBUG(LOGGER, "---> camera_frame");
-    
+
     if (!nh.has_parameter("camera_frame"))
     {
         nh.declare_parameter<std::string>("camera_frame", "pylon_camera");
@@ -105,17 +105,17 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // device user id
     RCLCPP_DEBUG(LOGGER, "---> device_user_id");
-    
+
     if (!nh.has_parameter("device_user_id"))
     {
         nh.declare_parameter<std::string>("device_user_id", "");
     }
-    
+
     nh.get_parameter("device_user_id", this->device_user_id_);
 
     // frame rate
     RCLCPP_DEBUG(LOGGER, "---> frame_rate");
-    
+
     if (!nh.has_parameter("frame_rate"))
     {
         nh.declare_parameter<double>("frame_rate", 5.0);
@@ -125,12 +125,12 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     
     // camera info url
     RCLCPP_DEBUG(LOGGER, "---> camera_info_url");
-    
+
     if (!nh.has_parameter("camera_info_url"))
     {
         nh.declare_parameter<std::string>("camera_info_url", "");
     }
-    
+
     nh.get_parameter("camera_info_url", this->camera_info_url_);
 
     // binning x
@@ -189,17 +189,17 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // downsampling_factor_exposure_search
     RCLCPP_DEBUG(LOGGER, "---> downsampling_factor_exposure_search");
-    
+
     if (!nh.has_parameter("downsampling_factor_exposure_search"))
     {
         nh.declare_parameter<int>("downsampling_factor_exposure_search", 20);
     }
-    
+
     nh.get_parameter("downsampling_factor_exposure_search", this->downsampling_factor_exposure_search_);
 
     // image encoding
     RCLCPP_DEBUG(LOGGER, "---> image_encoding");
-    
+
     if (!nh.has_parameter("image_encoding"))
     {
         nh.declare_parameter<std::string>("image_encoding", "");
@@ -229,18 +229,18 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     // exposure
     // > 0: Exposure time in microseconds
     RCLCPP_DEBUG(LOGGER, "---> exposure");
-    
+
     this->exposure_given_ = nh.has_parameter("exposure");
     if (!this->exposure_given_)
     {
         nh.declare_parameter<double>("exposure", 10000.0);
     }
-    
+
     nh.get_parameter("exposure", this->exposure_);
 
     // gain
     RCLCPP_DEBUG(LOGGER, "---> gain");
-    
+
     this->gain_given_ = nh.has_parameter("gain");
     if (!this->gain_given_)
     {
@@ -251,7 +251,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // gamma
     RCLCPP_DEBUG(LOGGER, "---> gamma");
-    
+
     this->gamma_given_ = nh.has_parameter("gamma");
     if (!this->gamma_given_)
     {
@@ -267,7 +267,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     {
         nh.declare_parameter<bool>("brightness_continuous", false);
     }
-    
+
     nh.get_parameter("brightness_continuous", this->brightness_continuous_);
 
     // exposure_auto
@@ -277,7 +277,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     {
         nh.declare_parameter<bool>("exposure_auto", true);
     }
-    
+
     nh.get_parameter("exposure_auto", this->exposure_auto_);
 
     // gain_auto
@@ -287,7 +287,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     {
         nh.declare_parameter<bool>("gain_auto", true);
     }
-    
+
     nh.get_parameter("gain_auto", this->gain_auto_);
 
     // brightness
@@ -299,7 +299,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     {
         nh.declare_parameter<int>("brightness", 100);
     }
-    
+
     nh.get_parameter("brightness", this->brightness_);
 
     if (this->gain_given_ && this->exposure_given_)
@@ -325,7 +325,7 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // exposure_search_timeout
     RCLCPP_DEBUG(LOGGER, "---> exposure_search_timeout");
-    
+
     if (!nh.has_parameter("exposure_search_timeout"))
     {
         nh.declare_parameter<double>("exposure_search_timeout", 5.);
@@ -335,85 +335,85 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // auto_exposure_upper_limit
     RCLCPP_DEBUG(LOGGER, "---> auto_exposure_upper_limit");
-    
+
     if (!nh.has_parameter("auto_exposure_upper_limit"))
     {
         nh.declare_parameter<double>("auto_exposure_upper_limit", 10000000.);
     }
-    
+
     nh.get_parameter("auto_exposure_upper_limit", this->auto_exposure_upper_limit_);
 
     // mtu_size
     RCLCPP_DEBUG(LOGGER, "---> gige/mtu_size");
-    
+
     if (!nh.has_parameter("gige/mtu_size"))
     {
         nh.declare_parameter<int>("gige/mtu_size", 3000);
     }
-    
+
     nh.get_parameter("gige/mtu_size", this->mtu_size_);
 
     // enable_status_publisher
     RCLCPP_DEBUG(LOGGER, "---> enable_status_publisher");
-    
+
     if (!nh.has_parameter("enable_status_publisher"))
     {
         nh.declare_parameter<bool>("enable_status_publisher", false);
     }
-    
+
     nh.get_parameter("enable_status_publisher", this->enable_status_publisher_);
 
     // enable_current_params_publisher
     RCLCPP_DEBUG(LOGGER, "---> enable_current_params_publisher");
-    
+
     if (!nh.has_parameter("enable_current_params_publisher"))
     {
         nh.declare_parameter<bool>("enable_current_params_publisher", false);
     }
-    
+
     nh.get_parameter("enable_current_params_publisher", this->enable_current_params_publisher_);
 
     // startup_user_set
     RCLCPP_DEBUG(LOGGER, "---> startup_user_set");
-    
+
     if (!nh.has_parameter("startup_user_set"))
     {
         nh.declare_parameter<std::string>("startup_user_set", "");
     }
-    
+
     nh.get_parameter("startup_user_set", this->startup_user_set_);
 
     // inter_pkg_delay
     RCLCPP_DEBUG(LOGGER, "---> gige/inter_pkg_delay");
-    
+
     if (!nh.has_parameter("gige/inter_pkg_delay"))
     {
         nh.declare_parameter<int>("gige/inter_pkg_delay", 1000);
     }
-    
+
     nh.get_parameter("gige/inter_pkg_delay", this->inter_pkg_delay_);
 
     // frame_transmission_delay
     RCLCPP_DEBUG(LOGGER, "---> gige/frame_transmission_delay");
-    
+
     if (!nh.has_parameter("gige/frame_transmission_delay"))
     {
         nh.declare_parameter<int>("gige/frame_transmission_delay", 0);
     }
-    
+
     nh.get_parameter("gige/frame_transmission_delay", this->frame_transmission_delay_);
 
     // shutter mode
     RCLCPP_DEBUG(LOGGER, "---> shutter_mode");
-    
+
     if (!nh.has_parameter("shutter_mode"))
     {
         nh.declare_parameter<std::string>("shutter_mode", "");
     }
-    
+
     std::string shutter_param_string;
     nh.get_parameter("shutter_mode", shutter_param_string);
-    
+
     if (shutter_param_string == "rolling")
     {
         this->shutter_mode_ = SM_ROLLING;
@@ -438,25 +438,25 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     {
         nh.declare_parameter<bool>("auto_flash", false);
     }
-    
+
     nh.get_parameter("auto_flash", this->auto_flash_);
 
     RCLCPP_DEBUG(LOGGER, "---> auto_flash_line_2");
-    
+
     if (!nh.has_parameter("auto_flash_line_2"))
     {
         nh.declare_parameter<bool>("auto_flash_line_2", true);
     }
-    
+
     nh.get_parameter("auto_flash_line_2", this->auto_flash_line_2_);
 
     RCLCPP_DEBUG(LOGGER, "---> auto_flash_line_3");
-    
+
     if (!nh.has_parameter("auto_flash_line_3"))
     {
         nh.declare_parameter<bool>("auto_flash_line_3", true);
     }
-    
+
     nh.get_parameter("auto_flash_line_3", this->auto_flash_line_3_);
 
     RCLCPP_INFO(LOGGER, "Autoflash: %i, line2: %i, line3: %i", this->auto_flash_, this->auto_flash_line_2_, this->auto_flash_line_3_);
@@ -468,70 +468,75 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     {
         nh.declare_parameter<int>("grab_timeout", 500);
     }
-    
+
     nh.get_parameter("grab_timeout", this->grab_timeout_);
 
     // trigger_timeout
     RCLCPP_DEBUG(LOGGER, "---> trigger_timeout");
-    
+
     if (!nh.has_parameter("trigger_timeout"))
     {
         nh.declare_parameter<int>("trigger_timeout", 5000);
     }
-    
+
     nh.get_parameter("trigger_timeout", this->trigger_timeout_);
 
     // white_balance_auto
     RCLCPP_DEBUG(LOGGER, "---> white_balance_auto");
-    
+
     if (!nh.has_parameter("white_balance_auto"))
     {
         nh.declare_parameter<int>("white_balance_auto", 0);
     }
-    
+
     nh.get_parameter("white_balance_auto", this->white_balance_auto_);
 
     // white_balance_ratio_red
     RCLCPP_DEBUG(LOGGER, "---> white_balance_ratio_red");
-    
+
     if (!nh.has_parameter("white_balance_ratio_red"))
     {
         nh.declare_parameter<float>("white_balance_ratio_red", 1.0);
     }
-    
+
     nh.get_parameter("white_balance_ratio_red", this->white_balance_ratio_red_);
 
     // white_balance_ratio_green
     RCLCPP_DEBUG(LOGGER, "---> white_balance_ratio_green");
-    
+
     if (!nh.has_parameter("white_balance_ratio_green"))
     {
         nh.declare_parameter<float>("white_balance_ratio_green", 1.0);
     }
-    
+
     nh.get_parameter("white_balance_ratio_green", this->white_balance_ratio_green_);
 
     // white_balance_ratio_blue
     RCLCPP_DEBUG(LOGGER, "---> white_balance_ratio_blue");
-    
+
     if (!nh.has_parameter("white_balance_ratio_blue"))
     {
         nh.declare_parameter<float>("white_balance_ratio_blue", 1.0);
     }
-    
+
     nh.get_parameter("white_balance_ratio_blue", this->white_balance_ratio_blue_);
 
     // grab_strategy
     RCLCPP_DEBUG(LOGGER, "---> grab_strategy");
-    
+
     if (!nh.has_parameter("grab_strategy"))
     {
         nh.declare_parameter<int>("grab_strategy", 0);
     }
-    
+
     nh.get_parameter("grab_strategy", this->grab_strategy_);
 
-    // validating parameters
+    if (!nh.has_parameter("sleep_on_startup"))
+    { cv_bridge::CvImagePtr cv_img_raw = cv_bridge::toCvCopy(*this->img_raw_msg_, this->img_raw_msg_->encoding);
+        nh.declare_parameter<bool>("sleep_on_startup", false);
+    }
+    nh.get_parameter("sleep_on_startup", this->sleep_on_startup_);
+
     this->validateParameterSet(nh);
 }
 
