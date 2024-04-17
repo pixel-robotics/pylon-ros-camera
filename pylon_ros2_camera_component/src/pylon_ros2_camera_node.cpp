@@ -172,7 +172,7 @@ void PylonROS2CameraNode::initPublishers()
   this->component_status_pub_ = this->create_publisher<pylon_ros2_camera_interfaces::msg::ComponentStatus>(msg_name, 5);
 
   msg_name = msg_prefix + "image_raw";
-  // Here 
+
   if (this->use_intra_process_comms_)
   {
     this->ros_img_raw_pub_ = this->create_publisher<sensor_msgs::msg::Image>(msg_name, 10);
