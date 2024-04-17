@@ -305,6 +305,11 @@ public:
      * Only supported for GigE cameras. Default: true
      */
     bool auto_flash_line_3_;
+
+    /**
+     * Flag that indicates if the camera should be sleeping on startup
+    */
+    bool sleep_on_startup_;
     
     /**
     * camera grab timeout in ms
