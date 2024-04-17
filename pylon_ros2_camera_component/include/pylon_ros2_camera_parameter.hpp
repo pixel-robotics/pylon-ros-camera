@@ -307,7 +307,7 @@ public:
     bool auto_flash_line_3_;
 
     /**
-    TODO:
+     * Flag that indicates if the camera should be sleeping on startup
     */
     bool sleep_on_startup_;
     
