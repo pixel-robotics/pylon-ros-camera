@@ -30,6 +30,7 @@
 
 #include "pylon_ros2_camera_node.hpp"
 
+using namespace std::chrono_literals;
 
 namespace pylon_ros2_camera
 {
@@ -76,11 +77,29 @@ PylonROS2CameraNode::PylonROS2CameraNode(const rclcpp::NodeOptions& options)
     RCLCPP_INFO(LOGGER, "Camera is set to sleep on startup");
   }
   this->is_sleeping_ = this->pylon_camera_parameter_set_.sleep_on_startup_;
-  // starting spinning thread
-  RCLCPP_INFO_STREAM(LOGGER, "Start image grabbing if node connects to topic with " << "a spinning rate of: " << this->frameRate() << " Hz");
+executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+  callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
   timer_ = this->create_wall_timer(
             std::chrono::duration<double>(1. / this->frameRate()),
-            std::bind(&PylonROS2CameraNode::spin, this));
+            std::bind(&PylonROS2CameraNode::spin, this),
+            callback_group_);
+
+   executor_->add_callback_group(callback_group_, this->get_node_base_interface());
+
+  init_timer_ = this->create_wall_timer(
+    50ms,
+    [this]() -> void {
+      init_timer_->cancel();
+      init_executor();
+    });
+}
+
+void PylonROS2CameraNode::init_executor()
+{
+  spin_executor_thread_ = std::thread([this]() {
+    executor_->spin();
+  });
 }
 
 PylonROS2CameraNode::~PylonROS2CameraNode()
