@@ -61,6 +61,8 @@ public:
 
     virtual bool isCamRemoved() override;
 
+    virtual std::int64_t getGPIOs() override;
+
     virtual bool setupSequencer(const std::vector<float>& exposure_times) override;
 
     virtual bool applyCamSpecificStartupSettings(const PylonROS2CameraParameter& parameters) override;
@@ -151,7 +153,7 @@ public:
 
     virtual float exposureStep() override;
 
-    virtual std::string setOffsetXY(const int& offsetValue, bool xAxis) override;  
+    virtual std::string setOffsetXY(const int& offsetValue, bool xAxis) override;
 
     virtual std::string reverseXY(const bool& reverse_x,bool around_x) override;
 
@@ -249,11 +251,11 @@ public:
 
     virtual std::string setDeviceLinkThroughputLimit(const int& limit) override;
 
-    virtual std::string triggerDeviceReset() override;  
+    virtual std::string triggerDeviceReset() override;
 
     virtual std::string grabbingStarting() const override;
 
-    virtual std::string grabbingStopping() override;  
+    virtual std::string grabbingStopping() override;
 
     virtual std::string setMaxTransferSize(const int& maxTransferSize) override;
 

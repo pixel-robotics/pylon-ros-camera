@@ -340,7 +340,7 @@ public:
     * 2 = GrabStrategy_LatestImages
     */
     int grab_strategy_;
-
+    // std::int64_t gpio_status_all_;
 
 protected:
     /**

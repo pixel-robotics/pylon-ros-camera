@@ -240,7 +240,10 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // gain
     RCLCPP_DEBUG(LOGGER, "---> gain");
-
+    if (!nh.has_parameter("gain"))
+    {
+        nh.declare_parameter<double>("gain", 0.5);
+    }
     this->gain_given_ = nh.has_parameter("gain");
     if (!this->gain_given_)
     {
@@ -251,7 +254,10 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     // gamma
     RCLCPP_DEBUG(LOGGER, "---> gamma");
-
+    if (!nh.has_parameter("gamma"))
+    {
+        nh.declare_parameter<double>("gamma", 1.0);
+    }
     this->gamma_given_ = nh.has_parameter("gamma");
     if (!this->gamma_given_)
     {
