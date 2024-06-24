@@ -101,6 +101,11 @@ bool PylonROS2CameraImpl<CameraTraitT>::openCamera()
     try
     {
         cam_->Open();
+        cam_->LineSelector.SetValue(LineSelectorEnums::LineSelector_Line2);
+        cam_->LineMode.SetValue(LineModeEnums::LineMode_Output);
+        cam_->LineSource.SetValue(LineSourceEnums::LineSource_UserOutput1);
+        cam_->UserOutputSelector.SetValue(UserOutputSelectorEnums::UserOutputSelector_UserOutput1);
+        cam_->UserOutputValue.SetValue(false);
         return true;
     }
     catch (const GenICam::GenericException &e)
@@ -115,6 +120,16 @@ bool PylonROS2CameraImpl<CameraTraitT>::isCamRemoved()
 {
     return cam_->IsCameraDeviceRemoved();
 }
+
+// get gpios and return
+template <typename CameraTraitT>
+std::int64_t PylonROS2CameraImpl<CameraTraitT>::getGPIOs()
+{
+    int64_t lineStatusAll = cam_->LineStatusAll.GetValue();
+    return lineStatusAll;
+    
+}
+
 
 template <typename CameraTraitT>
 size_t PylonROS2CameraImpl<CameraTraitT>::currentOffsetX()
@@ -2314,7 +2329,7 @@ template <typename CameraTraitT>
 std::string PylonROS2CameraImpl<CameraTraitT>::setLineMode(const int& value)
 {
     try
-    {   if ( (cam_->LineFormat.GetValue() == LineFormatEnums::LineFormat_TTL) || (cam_->LineFormat.GetValue() == LineFormatEnums::LineFormat_LVTTL) )
+    {   if ( (cam_->LineFormat.GetValue() == LineFormatEnums::LineFormat_TTL) || (cam_->LineFormat.GetValue() == LineFormatEnums::LineFormat_LVTTL) || (cam_->LineFormat.GetValue() == LineFormatEnums::LineFormat_OpenDrain) )
         {
             if (value == 0)
             {

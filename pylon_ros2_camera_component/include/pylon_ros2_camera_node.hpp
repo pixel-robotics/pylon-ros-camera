@@ -41,6 +41,7 @@
 
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include "std_msgs/msg/int64.hpp"
 
 // services
 #include "pylon_ros2_camera_interfaces/srv/get_integer_value.hpp"
@@ -1638,6 +1639,8 @@ protected:
 
   // topics
   rclcpp::Publisher<pylon_ros2_camera_interfaces::msg::CurrentParams>::SharedPtr current_params_pub_;
+  rclcpp::Publisher<std_msgs::msg::Int64>::SharedPtr gpio_pub_;
+  //this->gpio_pub = this->create_publisher<std_msgs::msg::Int64>(msg_name,10);
   pylon_ros2_camera_interfaces::msg::CurrentParams current_params_;
   rclcpp::Publisher<pylon_ros2_camera_interfaces::msg::ComponentStatus>::SharedPtr component_status_pub_;
   pylon_ros2_camera_interfaces::msg::ComponentStatus cm_status_;

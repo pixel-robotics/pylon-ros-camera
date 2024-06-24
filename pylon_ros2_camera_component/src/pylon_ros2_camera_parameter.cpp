@@ -123,6 +123,15 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     nh.get_parameter("camera_info_url", this->camera_info_url_);
 
     RCLCPP_DEBUG(LOGGER, "---> binning_x / binning_y");
+
+    if (!nh.has_parameter("binning_x"))
+    {
+        nh.declare_parameter<int>("binning_x", 1);
+    }
+    if (!nh.has_parameter("binning_y"))
+    {
+        nh.declare_parameter<int>("binning_y", 1);
+    }
     this->binning_x_given_ = nh.has_parameter("binning_x");
     if (this->binning_x_given_)
     {
@@ -201,6 +210,10 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     }
 
     RCLCPP_DEBUG(LOGGER, "---> gain");
+    if (!nh.has_parameter("gain"))
+    {
+        nh.declare_parameter<double>("gain", 0.5);
+    }
     this->gain_given_ = nh.has_parameter("gain");
     if (this->gain_given_)
     {
@@ -209,6 +222,10 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     }
 
     RCLCPP_DEBUG(LOGGER, "---> gamma");
+    if (!nh.has_parameter("gamma"))
+    {
+        nh.declare_parameter<double>("gamma", 1.0);
+    }
     this->gamma_given_ = nh.has_parameter("gamma");
     if (this->gamma_given_)
     {

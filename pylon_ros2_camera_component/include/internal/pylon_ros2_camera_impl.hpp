@@ -59,6 +59,9 @@ public:
     virtual bool openCamera();
 
     virtual bool isCamRemoved();
+        /* get gpios and return */
+
+    virtual std::int64_t getGPIOs();
 
     virtual bool setupSequencer(const std::vector<float>& exposure_times);
 

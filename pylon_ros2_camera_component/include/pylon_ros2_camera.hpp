@@ -86,6 +86,9 @@ public:
      * @return true if the camera device removal from the PC has been detected.
      */
     virtual bool isCamRemoved() = 0;
+    /* get gpios and return */
+
+    virtual std::int64_t getGPIOs() = 0;
 
     /**
      * Configure the sequencer exposure times.
