@@ -202,6 +202,10 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
 
     RCLCPP_DEBUG(LOGGER, "---> exposure");
     // > 0: Exposure time in microseconds
+    if (!nh.has_parameter("exposure"))
+    {
+        nh.declare_parameter<double>("exposure", 2.0);
+    }
     this->exposure_given_ = nh.has_parameter("exposure");
     if (this->exposure_given_)
     {
