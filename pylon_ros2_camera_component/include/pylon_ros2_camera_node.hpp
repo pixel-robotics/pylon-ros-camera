@@ -1620,6 +1620,8 @@ protected:
    */
   bool isSleeping();
 
+
+  void init_executor();
 protected:
 
   // camera
@@ -1800,6 +1802,11 @@ protected:
 
   // spinning thread
   rclcpp::TimerBase::SharedPtr timer_;
+  std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+  rclcpp::TimerBase::SharedPtr init_timer_;
+  std::thread spin_executor_thread_;
+  rclcpp::CallbackGroup::SharedPtr callback_group_;
+  
   // mutex
   std::recursive_mutex grab_mutex_;
 
