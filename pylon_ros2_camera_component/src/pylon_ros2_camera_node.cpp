@@ -30,7 +30,10 @@
 
 #include "pylon_ros2_camera_node.hpp"
 
+#include "std_msgs/msg/int64.hpp"
+
 using namespace std::chrono_literals;
+
 
 namespace pylon_ros2_camera
 {
@@ -189,7 +192,8 @@ void PylonROS2CameraNode::initPublishers()
   this->current_params_pub_ = this->create_publisher<pylon_ros2_camera_interfaces::msg::CurrentParams>(msg_name, 10);
   msg_name = msg_prefix + "status";
   this->component_status_pub_ = this->create_publisher<pylon_ros2_camera_interfaces::msg::ComponentStatus>(msg_name, 5);
-
+  msg_name = msg_prefix + "gpio_status";
+  this->gpio_pub_ = this->create_publisher<std_msgs::msg::Int64>(msg_name,10);
   msg_name = msg_prefix + "image_raw";
 
   if (this->use_intra_process_comms_)
@@ -917,6 +921,11 @@ bool PylonROS2CameraNode::startGrabbing()
 
 void PylonROS2CameraNode::spin()
 {
+  // publish GPIO status
+  auto message = std_msgs::msg::Int64();
+  message.data = this->pylon_camera_->getGPIOs();
+  this->gpio_pub_->publish(message);
+  // RCLCPP_INFO(LOGGER, "GPIO Status %li", this->pylon_camera_->getGPIOs());
   if (this->camera_info_manager_->isCalibrated())
   {
     RCLCPP_INFO_ONCE(LOGGER, "Camera is calibrated");
@@ -5067,7 +5076,7 @@ void PylonROS2CameraNode::publishCurrentParams()
       this->current_params_.message = "An exception while getting the camera current parameters occurred";
     }
   }
-
+  //this->gpio_pub_->publish(92);
   this->current_params_pub_->publish(this->current_params_);
 }
 
