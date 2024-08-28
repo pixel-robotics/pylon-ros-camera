@@ -169,8 +169,8 @@ PylonROS2Camera* createFromDevice(PYLON_CAM_TYPE cam_type, Pylon::IPylonDevice* 
             return new PylonROS2USBCamera(device);
         case DART:
             return new PylonROS2DARTCamera(device);
-        case BLAZE:
-            return new PylonROS2BlazeCamera(device);
+        //case BLAZE:
+        //    return new PylonROS2BlazeCamera(device);
         case UNKNOWN:
         default:
             return nullptr;

@@ -327,7 +327,13 @@ protected:
    * @param mode : 0 = off , 1 = once, 2 = continuous
    * @return error message if an error occurred or done message otherwise.
    */
-  std::string setWhiteBalanceAuto(const int& mode);
+  std::string setWhiteBalanceAuto(const int& mode);/**
+ * @brief Method to set the digital shift value.
+ * @param value The value to set for the digital shift.
+ * @return An error message if an error occurred, or "done" message otherwise.
+ */
+std::string setDigitalShift(const int64_t& value);
+
 
   /**
    * @brief Method to set the sensor readout mode (Normal or Fast)
@@ -782,6 +788,15 @@ protected:
    */
   void setWhiteBalanceAutoCallback(const std::shared_ptr<SetIntegerSrv::Request> request,
                                    std::shared_ptr<SetIntegerSrv::Response> response);
+
+                                   /**
+ * @brief Service callback for setting the digital shift value.
+ * @param request The request containing the desired digital shift value.
+ * @param response The response indicating whether the operation was successful.
+ */
+void setDigitalShiftCallback(const std::shared_ptr<SetIntegerSrv::Request> request,
+                             std::shared_ptr<SetIntegerSrv::Response> response);
+
 
   /**
    * @brief Service callback for setting the sensor readout mode (Normal or Fast)
@@ -1702,6 +1717,7 @@ protected:
   rclcpp::Service<SetIntegerSrv>::SharedPtr set_demosaicing_mode_srv_;
   rclcpp::Service<SetIntegerSrv>::SharedPtr set_light_source_preset_srv_;
   rclcpp::Service<SetIntegerSrv>::SharedPtr set_white_balance_auto_srv_;
+  rclcpp::Service<SetIntegerSrv>::SharedPtr set_digital_shift_srv_;
   rclcpp::Service<SetIntegerSrv>::SharedPtr set_sensor_readout_mode_srv_;
   rclcpp::Service<SetIntegerSrv>::SharedPtr set_acquisition_frame_count_srv_;
   rclcpp::Service<SetIntegerSrv>::SharedPtr set_trigger_selector_srv_;

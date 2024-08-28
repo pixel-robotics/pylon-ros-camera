@@ -251,6 +251,17 @@ public:
      * should be good (1500 for single-board computer)
      */
     int mtu_size_;
+    /**
+     * @brief The Digital Shift value.
+     *
+     * This parameter adjusts the digital gain of the camera by shifting the image data by a specified number of bits.
+     *
+     * A higher digital shift value increases the brightness of the image but may also amplify noise.
+     * Proper configuration of this value is essential for achieving the desired image quality, especially in low-light conditions.
+     *
+     * @note The range of acceptable values depends on the specific camera model and its sensor capabilities.
+     */
+    int64_t digital_shift_;
 
     /**
      * a flag used to enable/disable the node status publisher.

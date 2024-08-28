@@ -58,6 +58,7 @@ PylonROS2CameraParameter::PylonROS2CameraParameter() :
     exposure_search_timeout_(5.),
     auto_exposure_upper_limit_(0.0),
     mtu_size_(3000),
+    digital_shift_(0),
     enable_status_publisher_(false),
     enable_current_params_publisher_(false),
     startup_user_set_(""),
@@ -288,6 +289,12 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     }
     nh.get_parameter("auto_exposure_upper_limit", this->auto_exposure_upper_limit_);
     RCLCPP_DEBUG_STREAM(LOGGER, "auto_exposure_upper_limit has value " << this->auto_exposure_upper_limit_);
+RCLCPP_DEBUG(LOGGER, "---> camera/digital_shift");
+if (!nh.has_parameter("camera/digital_shift"))
+{
+    nh.declare_parameter<int64_t>("camera/digital_shift", 0);
+}
+nh.get_parameter("camera/digital_shift", this->digital_shift_);
 
     RCLCPP_DEBUG(LOGGER, "---> gige/mtu_size");
     if (!nh.has_parameter("gige/mtu_size"))

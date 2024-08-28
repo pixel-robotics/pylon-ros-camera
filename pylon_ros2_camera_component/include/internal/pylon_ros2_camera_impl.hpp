@@ -190,6 +190,10 @@ public:
     virtual std::string setSensorReadoutMode(const int& mode);
 
     virtual int getSensorReadoutMode();
+     virtual std::string setDigitalShift(const int64_t& value);
+
+  virtual int64_t getDigitalShift();
+
 
     virtual std::string setAcquisitionFrameCount(const int& frameCount);
 
@@ -476,4 +480,4 @@ protected:
 #include "internal/impl/pylon_ros2_camera_dart.hpp"
 #include "internal/impl/pylon_ros2_camera_gige.hpp"
 #include "internal/impl/pylon_ros2_camera_gige_ace2.hpp"
-#include "internal/impl/pylon_ros2_camera_blaze.hpp"
+// #include "internal/impl/pylon_ros2_camera_blaze.hpp"

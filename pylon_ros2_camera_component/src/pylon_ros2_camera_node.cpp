@@ -325,7 +325,9 @@ void PylonROS2CameraNode::initServices()
   
   srv_name = srv_prefix + "set_white_balance_auto";
   this->set_white_balance_auto_srv_ = this->create_service<SetIntegerSrv>(srv_name, std::bind(&PylonROS2CameraNode::setWhiteBalanceAutoCallback, this, _1, _2));
-  
+  srv_name = srv_prefix + "set_digital_shift";
+this->set_digital_shift_srv_ = this->create_service<SetIntegerSrv>(srv_name, std::bind(&PylonROS2CameraNode::setDigitalShiftCallback, this, _1, _2));
+
   srv_name = srv_prefix + "set_sensor_readout_mode";
   this->set_sensor_readout_mode_srv_ = this->create_service<SetIntegerSrv>(srv_name, std::bind(&PylonROS2CameraNode::setSensorReadoutModeCallback, this, _1, _2));
   
@@ -1783,6 +1785,25 @@ std::string PylonROS2CameraNode::setWhiteBalanceAuto(const int& mode)
   
   return this->pylon_camera_->setBalanceWhiteAuto(mode);
 }
+std::string PylonROS2CameraNode::setDigitalShift(const int64_t& value)
+{
+    if (this->pylon_camera_->isBlaze())
+    {
+        RCLCPP_WARN(LOGGER, "Trying to set digital shift: the Blaze camera does not support the digital shift parameter.");
+        return "No digital shift parameter with the Blaze camera.";
+    }
+
+    // Lock the grab mutex to ensure thread safety
+    std::lock_guard<std::recursive_mutex> lock(this->grab_mutex_);
+    if (!this->pylon_camera_->isReady())
+    {
+        RCLCPP_WARN(LOGGER, "Error in setDigitalShift(): pylon_camera_ is not ready!");
+        return "Pylon camera is not ready!";
+    }
+
+    return this->pylon_camera_->setDigitalShift(value);
+}
+
 
 std::string PylonROS2CameraNode::setSensorReadoutMode(const int& mode)
 {
@@ -2946,6 +2967,28 @@ void PylonROS2CameraNode::setSensorReadoutModeCallback(const std::shared_ptr<Set
     }
   }
 }
+void PylonROS2CameraNode::setDigitalShiftCallback(const std::shared_ptr<SetIntegerSrv::Request> request,
+                                                  std::shared_ptr<SetIntegerSrv::Response> response)
+{
+    response->message = this->setDigitalShift(request->value);
+    if (response->message.find("done") != std::string::npos)
+    {
+        response->success = true;
+    }
+    else
+    {
+        response->success = false;
+        if (response->message == "Node is not writable.")
+        {
+            response->message = "Using this feature requires stopping image grabbing.";
+        }
+        else if (response->message.find("EnumEntry") != std::string::npos)
+        {
+            response->message = "The passed digital shift value is not supported by the connected camera.";
+        }
+    }
+}
+
 
 void PylonROS2CameraNode::setAcquisitionFrameCountCallback(const std::shared_ptr<SetIntegerSrv::Request> request,
                                                            std::shared_ptr<SetIntegerSrv::Response> response)

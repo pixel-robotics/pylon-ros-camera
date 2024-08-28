@@ -1845,6 +1845,50 @@ float PylonROS2CameraImpl<CameraTraitT>::getSharpnessEnhancement()
 }
 
 template <typename CameraTraitT>
+std::string PylonROS2CameraImpl<CameraTraitT>::setDigitalShift(const int64_t& value)
+{
+    try
+    {
+        if (GenApi::IsAvailable(cam_->DigitalShift))
+        {
+            cam_->DigitalShift.SetValue(value);
+            return "done";
+        }
+        else
+        {
+            RCLCPP_ERROR_STREAM(LOGGER_BASE, "Error while trying to change the Digital Shift value. The connected Camera does not support this feature.");
+            return "The connected Camera does not support this feature.";
+        }
+    }
+    catch (const GenICam::GenericException& e)
+    {
+        RCLCPP_ERROR_STREAM(LOGGER_BASE, "An exception occurred while trying to set the Digital Shift value: " << e.GetDescription());
+        return e.GetDescription();
+    }
+}
+template <typename CameraTraitT>
+int64_t PylonROS2CameraImpl<CameraTraitT>::getDigitalShift()
+{
+    try
+    {
+        if (GenApi::IsAvailable(cam_->DigitalShift))
+        {
+            return static_cast<int64_t>(cam_->DigitalShift.GetValue());
+        }
+        else
+        {
+            return -10000;  // Return a specific error code if the property is unavailable
+        }
+    }
+    catch (const GenICam::GenericException& e)
+    {
+        return -20000;  // Return a specific error code if an exception occurs
+    }
+}
+
+
+
+template <typename CameraTraitT>
 std::string PylonROS2CameraImpl<CameraTraitT>::setSensorReadoutMode(const int& mode)
 {
     try

@@ -590,6 +590,19 @@ public:
      * @return -3 = Unknown, -2 = Error, -1 = Not available, 0 = Off, 1 = Once, 2 = Continuous
      */
     virtual int getBalanceWhiteAuto() = 0;
+    /**
+ * Set the Digital Shift value.
+ * @param value : The value to set for the digital shift.
+ * @return error message if an error occurred or "done" message otherwise.
+ */
+virtual std::string setDigitalShift(const int64_t& value) = 0;
+
+/**
+ * Get the current Digital Shift value.
+ * @return -10000 = Not available, -20000 = Error, or the actual Digital Shift value.
+ */
+virtual int64_t getDigitalShift() = 0;
+
 
      /**
      * set the sensor readout mode
