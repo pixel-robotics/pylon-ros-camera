@@ -987,8 +987,8 @@ void PylonROS2CameraNode::spin()
         this->cv_bridge_img_rect_->header.stamp = this->img_raw_msg_->header.stamp;
         assert(this->pinhole_model_->initialized());
 
-        const int bit_depth = sensor_msgs::image_encodings::bitDepth(img_raw_msg_.encoding);
-        std::string rect_encoding = img_raw_msg_.encoding;
+        const int bit_depth = sensor_msgs::image_encodings::bitDepth(img_raw_msg_->encoding);
+        std::string rect_encoding = img_raw_msg_->encoding;
         if (bit_depth == 8 && sensor_msgs::image_encodings::isBayer(rect_encoding))
         {
           rect_encoding = "bgr8";
