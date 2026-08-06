@@ -58,6 +58,29 @@
     #  called 'device specific units'.
     # gain: 0.5
 
+    #  Interpret 'gain' and 'gain_sequence' as raw device units - dB on ace 2,
+    #  device specific units on ace 1 - instead of as a fraction of the gain
+    #  range. Lets a config carry the values read off the camera directly.
+    # gain_raw: false
+
+    #  Gain and exposure values cycled one entry per frame, so consecutive
+    #  frames of the same scene are captured at different brightness levels.
+    #  Useful where a single setting cannot work, e.g. barcode reading, where a
+    #  reflective label needs low gain and a shadowed one needs high gain.
+    #  A full cycle walks the cartesian product of both lists, so N gains and M
+    #  exposures give N*M frames. Either list may be left empty to keep that
+    #  parameter fixed. Not compatible with the auto brightness features, which
+    #  are refused while a sequence is configured.
+    # gain_sequence: [19.0, 12.0, 5.0]
+    # exposure_sequence: [5000.0, 10000.0]
+
+    #  Frame rate written to the camera itself, as opposed to 'frame_rate' which
+    #  only paces this node. Leave negative to keep the camera's own setting.
+    #  Set it when using a sequence: a camera free-running faster than the node
+    #  drains the grab queue serves frames that were exposed before the settings
+    #  meant for them, which defeats the cycling.
+    # acquisition_frame_rate: -1.0
+
     #  Gamma correction of pixel intensity.
     #  Adjusts the brightness of the pixel values output by the camera's sensor
     #  to account for a non-linearity in the human perception of brightness or

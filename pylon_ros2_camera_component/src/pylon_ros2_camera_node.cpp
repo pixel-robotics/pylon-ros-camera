@@ -680,6 +680,18 @@ bool PylonROS2CameraNode::startGrabbing()
     return false;
   }
 
+  this->sequencer_ = ParameterSequencer(this->pylon_camera_parameter_set_.gain_sequence_,
+                                        this->pylon_camera_parameter_set_.exposure_sequence_);
+  this->sequence_step_ = 0;
+  if (!this->sequencer_.empty())
+  {
+    RCLCPP_INFO_STREAM(LOGGER, "Cycling gain/exposure over " << this->sequencer_.size()
+      << " combination(s), one per frame: "
+      << this->pylon_camera_parameter_set_.gain_sequence_.size() << " gain value(s) "
+      << (this->pylon_camera_parameter_set_.gain_raw_ ? "in device units" : "as a fraction of range")
+      << " x " << this->pylon_camera_parameter_set_.exposure_sequence_.size() << " exposure value(s)");
+  }
+
   const std::size_t num_user_outputs = this->pylon_camera_->numUserOutputs();
   this->set_user_output_srvs_.resize(2 * num_user_outputs);
   
@@ -829,12 +841,20 @@ bool PylonROS2CameraNode::startGrabbing()
   }
   
   if (!this->pylon_camera_->isBlaze() && this->pylon_camera_parameter_set_.gain_given_)
-  {   
+  {
     float reached_gain;
-    this->setGain(this->pylon_camera_parameter_set_.gain_, reached_gain);
+    const bool raw = this->pylon_camera_parameter_set_.gain_raw_;
+    if (raw)
+    {
+      this->pylon_camera_->setGainRaw(this->pylon_camera_parameter_set_.gain_, reached_gain);
+    }
+    else
+    {
+      this->setGain(this->pylon_camera_parameter_set_.gain_, reached_gain);
+    }
     RCLCPP_INFO_STREAM(LOGGER, "Attempted to set gain to: "
-            << this->pylon_camera_parameter_set_.gain_ << ", reached: "
-            << reached_gain);
+            << this->pylon_camera_parameter_set_.gain_ << (raw ? " (device units)" : " (fraction of range)")
+            << ", reached: " << reached_gain);
   }
 
   if (!this->pylon_camera_->isBlaze() && pylon_camera_parameter_set_.gamma_given_)
@@ -857,8 +877,11 @@ bool PylonROS2CameraNode::startGrabbing()
             << this->pylon_camera_parameter_set_.brightness_ << ", reached: "
             << reached_brightness);
 
-    if (this->pylon_camera_parameter_set_.brightness_continuous_)
-    {   
+    // continuous auto brightness would keep overwriting the values the cycle writes,
+    // so the two are mutually exclusive
+    const bool sequencing = !this->sequencer_.empty();
+    if (this->pylon_camera_parameter_set_.brightness_continuous_ && !sequencing)
+    {
       if ( this->pylon_camera_parameter_set_.exposure_auto_)
       {
         this->pylon_camera_->enableContinuousAutoExposure();
@@ -869,7 +892,11 @@ bool PylonROS2CameraNode::startGrabbing()
       }
     }
     else
-    { 
+    {
+      if (this->pylon_camera_parameter_set_.brightness_continuous_)
+      {
+        RCLCPP_WARN(LOGGER, "Ignoring brightness_continuous because a gain/exposure sequence is configured");
+      }
       this->pylon_camera_->disableAllRunningAutoBrightessFunctions();
     }
   }
@@ -889,6 +916,24 @@ bool PylonROS2CameraNode::startGrabbing()
   {
     RCLCPP_INFO_STREAM_ONCE(LOGGER, "Startup settings: "
       << "exposure = " << this->pylon_camera_->currentExposure());
+  }
+
+  // Written once here rather than per frame; applyNextSequenceStep() skips constant sequences.
+  if (this->sequencer_.size() == 1)
+  {
+    this->applySequenceStep(0);
+  }
+
+  // Pin the camera's own acquisition rate to keep it from producing faster than this node
+  // drains the grab queue - otherwise the queue backs up and serves frames that were exposed
+  // before the settings written for them, which defeats any per-frame cycling.
+  if (!this->pylon_camera_->isBlaze() && this->pylon_camera_parameter_set_.acquisition_frame_rate_ > 0.0)
+  {
+    const double rate = this->pylon_camera_parameter_set_.acquisition_frame_rate_;
+    const std::string enabled = this->pylon_camera_->enableAcquisitionFrameRate(true);
+    const std::string applied = this->pylon_camera_->setAcquisitionFrameRate(static_cast<float>(rate));
+    RCLCPP_INFO_STREAM(LOGGER, "Attempted to set the camera acquisition frame rate to " << rate
+            << " Hz, enable: " << enabled << ", set: " << applied);
   }
 
   // Framerate Settings
@@ -959,6 +1004,11 @@ void PylonROS2CameraNode::spin()
       const bool any_subscriber = (this->img_raw_pub_.getNumSubscribers() != 0 || this->getNumSubscribersRectImagePub() != 0);
       if (!this->isSleeping() && any_subscriber)
       {
+        // one lock across both halves, so nothing else writing exposure/gain can land
+        // between the settings for this frame and the frame itself
+        std::lock_guard<std::recursive_mutex> lock(this->grab_mutex_);
+        this->applyNextSequenceStep();
+
         if (!this->grabImage())
         {
           continue;
@@ -1138,6 +1188,59 @@ bool PylonROS2CameraNode::grabImage()
   return true;
 }
 
+void PylonROS2CameraNode::applySequenceStep(std::size_t step_index)
+{
+  if (this->sequencer_.empty() || this->pylon_camera_->isBlaze())
+  {
+    return;
+  }
+
+  std::lock_guard<std::recursive_mutex> lock(this->grab_mutex_);
+  if (!this->pylon_camera_->isReady())
+  {
+    return;
+  }
+
+  const SequenceStep step = this->sequencer_.at(step_index);
+
+  // the plain setExposure()/setGain() wrappers retry for up to 5 s when the camera
+  // quantises a value away from the target, which would stall the stream. Per frame we
+  // write once and move on.
+  if (step.has_exposure)
+  {
+    float reached_exposure;
+    if (!this->pylon_camera_->setExposureFast(step.exposure, reached_exposure))
+    {
+      RCLCPP_WARN_STREAM(LOGGER, "Failed to set exposure " << step.exposure << " us of the frame sequence");
+    }
+  }
+
+  if (step.has_gain)
+  {
+    float reached_gain;
+    const bool applied = this->pylon_camera_parameter_set_.gain_raw_
+      ? this->pylon_camera_->setGainRaw(step.gain, reached_gain)
+      : this->pylon_camera_->setGain(step.gain, reached_gain);
+    if (!applied)
+    {
+      RCLCPP_WARN_STREAM(LOGGER, "Failed to set gain " << step.gain << " of the frame sequence");
+    }
+  }
+}
+
+void PylonROS2CameraNode::applyNextSequenceStep()
+{
+  // a single-entry sequence never changes, so writing it again every frame would only
+  // cost control-channel round trips ahead of each grab. It is written once at startup.
+  if (this->sequencer_.size() < 2)
+  {
+    return;
+  }
+
+  this->applySequenceStep(this->sequence_step_);
+  this->sequence_step_ = (this->sequence_step_ + 1) % this->sequencer_.size();
+}
+
 bool PylonROS2CameraNode::setExposure(const float& target_exposure, float& reached_exposure)
 {
   std::lock_guard<std::recursive_mutex> lock(this->grab_mutex_);
@@ -1186,6 +1289,16 @@ bool PylonROS2CameraNode::setBrightness(const int& target_brightness,
   {
     RCLCPP_WARN(LOGGER, "Trying to set brightness: there's no brightness parameter with the blaze camera - returning -9999");
     reached_brightness = -9999;
+    return false;
+  }
+
+  // a brightness search drives exposure and gain itself, so it cannot share the camera
+  // with the per-frame cycle. Checked here rather than per caller so the service, the
+  // GrabImages action and the startup path are all covered.
+  if (!this->sequencer_.empty())
+  {
+    RCLCPP_WARN(LOGGER, "Refusing to set brightness while a gain/exposure sequence is configured");
+    reached_brightness = -1;
     return false;
   }
 
@@ -2706,7 +2819,9 @@ void PylonROS2CameraNode::setBrightnessCallback(const std::shared_ptr<SetBrightn
                                           response->reached_brightness,
                                           request->exposure_auto,
                                           request->gain_auto);
-  if (request->brightness_continuous)
+  // setBrightness refuses while a sequence is configured; don't let the auto functions
+  // be switched on behind its back either
+  if (request->brightness_continuous && this->sequencer_.empty())
   {
     if (request->exposure_auto)
     {

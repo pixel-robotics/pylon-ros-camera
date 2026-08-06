@@ -327,12 +327,37 @@ public:
     float white_balance_ratio_blue_;
 
     /**
-    * Camera grab strategy 
+    * Camera grab strategy
     * 0 = GrabStrategy_OneByOne
     * 1 = GrabStrategy_LatestImageOnly
     * 2 = GrabStrategy_LatestImages
     */
     int grab_strategy_;
+
+    /**
+     * Gain values cycled one per frame ("manual HDR"). Empty disables cycling.
+     * Interpreted as raw device units when gain_raw_ is set, else as a fraction
+     * of the camera gain range like the 'gain' parameter.
+     */
+    std::vector<double> gain_sequence_;
+
+    /**
+     * Exposure times in microseconds cycled one per frame. Empty disables cycling.
+     */
+    std::vector<double> exposure_sequence_;
+
+    /**
+     * Interpret 'gain' and 'gain_sequence' as raw device units (dB on ace 2,
+     * device specific units on ace 1) instead of a 0..1 fraction of the range.
+     */
+    bool gain_raw_;
+
+    /**
+     * Frame rate written to the camera itself. Negative leaves the camera
+     * untouched. Without this the camera free-runs faster than the node drains
+     * it and the grab queue serves stale frames.
+     */
+    double acquisition_frame_rate_;
 
 
 protected:

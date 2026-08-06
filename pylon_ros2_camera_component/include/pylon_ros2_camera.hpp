@@ -211,6 +211,18 @@ public:
                              float& reached_exposure) = 0;
 
     /**
+     * Sets the exposure time without judging the result. Unlike setExposure()
+     * this reports success whenever the camera accepted the write, even if the
+     * camera quantised the value. Meant for per-frame use, where the caller
+     * cannot afford the retry loop that a 'false' triggers.
+     * @param target_exposure the desired exposure time to set in microseconds.
+     * @param reached_exposure time in microseconds
+     * @return false only if a communication error occurred.
+     */
+    virtual bool setExposureFast(const float& target_exposure,
+                                 float& reached_exposure) = 0;
+
+    /**
      * Sets autoflash active for the specified lines
      * @param flash_on_lines map from line e.g., 1 or 2 to a boolean to 
               activate or deactivate the autoflash for this line .
@@ -225,6 +237,21 @@ public:
      * @return false if a communication error occurred or true otherwise.
      */
     virtual bool setGain(const float& target_gain, float& reached_gain) = 0;
+
+    /**
+     * Sets the gain in the camera's own units - dB on ace 2, device specific
+     * units on ace 1 - instead of as a fraction of the gain range. Lets a
+     * configuration carry the values an operator reads off the camera directly.
+     * @param target_gain the target gain in device units.
+     * @param reached_gain the reached gain in device units.
+     * @return false if a communication error occurred or true otherwise.
+     */
+    virtual bool setGainRaw(const float& target_gain, float& reached_gain) = 0;
+
+    /**
+     * @return the currently set gain in the camera's own units.
+     */
+    virtual float currentGainRaw() = 0;
 
     /**
      * Sets the target gamma value

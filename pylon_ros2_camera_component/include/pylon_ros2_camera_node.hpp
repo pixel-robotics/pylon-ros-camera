@@ -71,6 +71,7 @@
 #include "pylon_ros2_camera_interfaces/action/grab_blaze_data.hpp"
 
 // camera
+#include "parameter_sequencer.hpp"
 #include "pylon_ros2_camera.hpp"
 #include "pylon_ros2_camera_parameter.hpp"
 
@@ -208,6 +209,18 @@ protected:
    * @return false if an error occurred.
    */
   virtual bool grabImage();
+
+  /**
+   * @brief Writes one gain/exposure entry of the cycle to the camera.
+   */
+  virtual void applySequenceStep(std::size_t step);
+
+  /**
+   * @brief Applies the gain/exposure entry due for the next frame and advances
+   * the cycle. No-op when no sequence is configured, or when the sequence holds
+   * a single entry - that one is written once at startup instead.
+   */
+  virtual void applyNextSequenceStep();
 
   /**
    * @brief Update the exposure value on the camera
@@ -1831,6 +1844,10 @@ protected:
   // intern
   std::vector<std::size_t> sampling_indices_;
   std::array<float, 256> brightness_exp_lut_{};
+
+  // gain/exposure cycled one entry per frame, empty when the feature is off
+  ParameterSequencer sequencer_;
+  std::size_t sequence_step_{0};
 
   bool is_sleeping_{false};
 

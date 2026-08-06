@@ -29,6 +29,8 @@
 #include "pylon_ros2_camera_parameter.hpp"
 #include <sensor_msgs/image_encodings.hpp>
 
+#include <algorithm>
+
 
 namespace pylon_ros2_camera
 {
@@ -74,6 +76,8 @@ PylonROS2CameraParameter::PylonROS2CameraParameter() :
     white_balance_ratio_green_(1.0),
     white_balance_ratio_blue_(1.0),
     grab_strategy_(0),
+    gain_raw_(false),
+    acquisition_frame_rate_(-1.0),
     camera_frame_("pylon_camera"),
     device_user_id_(""),
     frame_rate_(5.0),
@@ -531,6 +535,46 @@ void PylonROS2CameraParameter::readFromRosParameterServer(rclcpp::Node& nh)
     
     nh.get_parameter("grab_strategy", this->grab_strategy_);
 
+    // gain_sequence
+    RCLCPP_DEBUG(LOGGER, "---> gain_sequence");
+
+    if (!nh.has_parameter("gain_sequence"))
+    {
+        nh.declare_parameter<std::vector<double>>("gain_sequence", std::vector<double>());
+    }
+
+    nh.get_parameter("gain_sequence", this->gain_sequence_);
+
+    // exposure_sequence
+    RCLCPP_DEBUG(LOGGER, "---> exposure_sequence");
+
+    if (!nh.has_parameter("exposure_sequence"))
+    {
+        nh.declare_parameter<std::vector<double>>("exposure_sequence", std::vector<double>());
+    }
+
+    nh.get_parameter("exposure_sequence", this->exposure_sequence_);
+
+    // gain_raw
+    RCLCPP_DEBUG(LOGGER, "---> gain_raw");
+
+    if (!nh.has_parameter("gain_raw"))
+    {
+        nh.declare_parameter<bool>("gain_raw", false);
+    }
+
+    nh.get_parameter("gain_raw", this->gain_raw_);
+
+    // acquisition_frame_rate
+    RCLCPP_DEBUG(LOGGER, "---> acquisition_frame_rate");
+
+    if (!nh.has_parameter("acquisition_frame_rate"))
+    {
+        nh.declare_parameter<double>("acquisition_frame_rate", -1.0);
+    }
+
+    nh.get_parameter("acquisition_frame_rate", this->acquisition_frame_rate_);
+
     // validating parameters
     this->validateParameterSet(nh);
 }
@@ -572,11 +616,55 @@ void PylonROS2CameraParameter::validateParameterSet(rclcpp::Node& nh)
         this->exposure_given_ = false;
     }
 
-    if (this->gain_given_ && ( this->gain_ < 0.0 || this->gain_ > 1.0 ))
+    // in raw mode the gain is in device units (dB on ace 2), so the 0..1 range does not apply
+    if (this->gain_given_ && !this->gain_raw_ && ( this->gain_ < 0.0 || this->gain_ > 1.0 ))
     {
         RCLCPP_WARN_STREAM(LOGGER, "The specified gain value - " << this->gain_ << " % - is out of valid range!"
                                 << "-> Will reset it to default value.");
         this->gain_given_ = false;
+    }
+
+    if (this->gain_given_ && this->gain_raw_ && this->gain_ < 0.0)
+    {
+        RCLCPP_WARN_STREAM(LOGGER, "The specified raw gain value - " << this->gain_ << " - is negative!"
+                                << "-> Will reset it to default value.");
+        this->gain_given_ = false;
+    }
+
+    for (const double gain : this->gain_sequence_)
+    {
+        const bool out_of_range = this->gain_raw_ ? (gain < 0.0) : (gain < 0.0 || gain > 1.0);
+        if (out_of_range)
+        {
+            RCLCPP_WARN_STREAM(LOGGER, "The gain_sequence entry " << gain << " is out of valid range!"
+                                    << " -> Will drop the whole gain sequence.");
+            this->gain_sequence_.clear();
+            break;
+        }
+    }
+
+    for (const double exposure : this->exposure_sequence_)
+    {
+        if (exposure <= 0.0)
+        {
+            RCLCPP_WARN_STREAM(LOGGER, "The exposure_sequence entry " << exposure << " is not positive!"
+                                    << " -> Will drop the whole exposure sequence.");
+            this->exposure_sequence_.clear();
+            break;
+        }
+    }
+
+    // every combination is visited once per cycle, so the cycle grows as the product of both lists.
+    // a label has to stay in view for a whole cycle for the sequence to be of any use.
+    const std::size_t cycle_length = std::max<std::size_t>(this->gain_sequence_.size(), 1)
+                                   * std::max<std::size_t>(this->exposure_sequence_.size(), 1);
+    if (cycle_length > 1 && this->frame_rate_ > 0.0
+        && static_cast<double>(cycle_length) / this->frame_rate_ > 1.0)
+    {
+        RCLCPP_WARN_STREAM(LOGGER, "The gain/exposure cycle needs "
+                                << static_cast<double>(cycle_length) / this->frame_rate_ << " s at "
+                                << this->frame_rate_ << " Hz. Objects passing the camera faster than that "
+                                << "will not be seen at every setting.");
     }
 
     if (this->brightness_given_ && ( this->brightness_ < 0.0 || this->brightness_ > 255 ))

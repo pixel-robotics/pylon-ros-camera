@@ -1084,37 +1084,31 @@ bool PylonROS2CameraImpl<CameraTraitT>::setBinningY(const size_t& target_binning
 }
 
 template <typename CameraTraitT>
-bool PylonROS2CameraImpl<CameraTraitT>::setExposure(const float& target_exposure,
-                                                    float& reached_exposure)
+bool PylonROS2CameraImpl<CameraTraitT>::writeExposure(const float& target_exposure,
+                                                      float& reached_exposure,
+                                                      float& clamped_target)
 {
     try
     {
         cam_->ExposureAuto.TrySetValue(ExposureAutoEnums::ExposureAuto_Off);
 
-        float exposure_to_set = target_exposure;
-        if ( exposure_to_set < exposureTime().GetMin() )
+        clamped_target = target_exposure;
+        if ( clamped_target < exposureTime().GetMin() )
         {
-            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << exposure_to_set << ") "
+            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << clamped_target << ") "
                 << "time unreachable! Setting to lower limit: "
                 << exposureTime().GetMin());
-            exposure_to_set = exposureTime().GetMin();
+            clamped_target = exposureTime().GetMin();
         }
-        else if ( exposure_to_set > exposureTime().GetMax() )
+        else if ( clamped_target > exposureTime().GetMax() )
         {
-            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << exposure_to_set << ") "
+            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << clamped_target << ") "
                 << "time unreachable! Setting to upper limit: "
                 << exposureTime().GetMax());
-            exposure_to_set = exposureTime().GetMax();
+            clamped_target = exposureTime().GetMax();
         }
-        exposureTime().SetValue(exposure_to_set);
+        exposureTime().SetValue(clamped_target);
         reached_exposure = currentExposure();
-
-        if ( std::fabs(reached_exposure - exposure_to_set) > exposureStep() )
-        {
-            // no success if the delta between target and reached exposure
-            // is greater then the exposure step in ms
-            return false;
-        }
     }
     catch ( const GenICam::GenericException &e )
     {
@@ -1124,6 +1118,29 @@ bool PylonROS2CameraImpl<CameraTraitT>::setExposure(const float& target_exposure
         return false;
     }
     return true;
+}
+
+template <typename CameraTraitT>
+bool PylonROS2CameraImpl<CameraTraitT>::setExposureFast(const float& target_exposure,
+                                                        float& reached_exposure)
+{
+    float clamped_target;
+    return writeExposure(target_exposure, reached_exposure, clamped_target);
+}
+
+template <typename CameraTraitT>
+bool PylonROS2CameraImpl<CameraTraitT>::setExposure(const float& target_exposure,
+                                                    float& reached_exposure)
+{
+    float clamped_target;
+    if ( !writeExposure(target_exposure, reached_exposure, clamped_target) )
+    {
+        return false;
+    }
+
+    // no success if the delta between target and reached exposure
+    // is greater then the exposure step in ms
+    return std::fabs(reached_exposure - clamped_target) <= exposureStep();
 }
 
 template <typename CameraTraitT>
@@ -1170,6 +1187,48 @@ bool PylonROS2CameraImpl<CameraTraitT>::setGain(const float& target_gain,
         return false;
     }
     return true;
+}
+
+template <typename CameraTraitT>
+bool PylonROS2CameraImpl<CameraTraitT>::setGainRaw(const float& target_gain,
+                                                   float& reached_gain)
+{
+    try
+    {
+        cam_->GainAuto.TrySetValue(GainAutoEnums::GainAuto_Off);
+
+        float gain_to_set = target_gain;
+        if ( gain_to_set < gain().GetMin() )
+        {
+            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired raw gain (" << target_gain << ") out of "
+                << "range! Setting to lower limit: " << gain().GetMin());
+            gain_to_set = gain().GetMin();
+        }
+        else if ( gain_to_set > gain().GetMax() )
+        {
+            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired raw gain (" << target_gain << ") out of "
+                << "range! Setting to upper limit: " << gain().GetMax());
+            gain_to_set = gain().GetMax();
+        }
+
+        // the gain node is a float on ace 2 / USB but an integer on ace 1,
+        // so convert to whatever this camera family actually stores
+        gain().SetValue(static_cast<decltype(gain().GetValue())>(gain_to_set));
+        reached_gain = currentGainRaw();
+    }
+    catch ( const GenICam::GenericException &e )
+    {
+        RCLCPP_ERROR_STREAM(LOGGER_BASE, "An exception while setting target raw gain to "
+               << target_gain << " occurred: " << e.GetDescription());
+        return false;
+    }
+    return true;
+}
+
+template <typename CameraTraitT>
+float PylonROS2CameraImpl<CameraTraitT>::currentGainRaw()
+{
+    return static_cast<float>(gain().GetValue());
 }
 
 template <typename CameraTraitT>

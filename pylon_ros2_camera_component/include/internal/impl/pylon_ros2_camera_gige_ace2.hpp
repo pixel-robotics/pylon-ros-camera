@@ -69,6 +69,8 @@ public:
     virtual int getDeviceLinkThroughputLimitMode();
     virtual std::string setDeviceLinkThroughputLimit(const int& limit);
     virtual bool setGain(const float& target_gain, float& reached_gain);
+    virtual bool setGainRaw(const float& target_gain, float& reached_gain);
+    virtual float currentGainRaw();
     //virtual std::string setTriggerSource(const int& source);
     virtual std::string setTimerSelector(const int& selector);
     virtual std::string setPTPPriority(const int& value);
@@ -780,6 +782,43 @@ bool PylonROS2GigEAce2Camera::setGain(const float& target_gain, float& reached_g
         return false;
     }
     return true;
+}
+
+bool PylonROS2GigEAce2Camera::setGainRaw(const float& target_gain, float& reached_gain)
+{
+    try
+    {
+        cam_->GainAuto.TrySetValue(GainAutoEnums::GainAuto_Off);
+
+        float gain_to_set = target_gain;
+        if ( gain_to_set < gain().GetMin() )
+        {
+            RCLCPP_WARN_STREAM(LOGGER_GIGE_ACE2, "Desired raw gain (" << target_gain << ") in dB out "
+                << "of range! Setting to lower limit: " << gain().GetMin());
+            gain_to_set = gain().GetMin();
+        }
+        else if ( gain_to_set > gain().GetMax() )
+        {
+            RCLCPP_WARN_STREAM(LOGGER_GIGE_ACE2, "Desired raw gain (" << target_gain << ") in dB out "
+                << "of range! Setting to upper limit: " << gain().GetMax());
+            gain_to_set = gain().GetMax();
+        }
+
+        gain().SetValue(gain_to_set);
+        reached_gain = currentGainRaw();
+    }
+    catch ( const GenICam::GenericException &e )
+    {
+        RCLCPP_ERROR_STREAM(LOGGER_GIGE_ACE2, "An exception while setting target raw gain to "
+               << target_gain << " occurred: " << e.GetDescription());
+        return false;
+    }
+    return true;
+}
+
+float PylonROS2GigEAce2Camera::currentGainRaw()
+{
+    return static_cast<float>(gain().GetValue());
 }
 
 std::string PylonROS2GigEAce2Camera::typeName() const
