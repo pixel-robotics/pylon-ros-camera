@@ -88,14 +88,6 @@ public:
 
     virtual bool setExposure(const float& target_exposure, float& reached_exposure) override;
 
-    virtual bool setExposureFast(const float& target_exposure, float& reached_exposure) override;
-
-    /**
-     * Clamps the target into the camera's range, writes it and reports both the
-     * value the camera settled on and the clamped target it was asked for.
-     */
-    bool writeExposure(const float& target_exposure, float& reached_exposure, float& clamped_target);
-
     virtual bool setAutoflash(const std::map<int, bool> flash_on_lines) override;
 
     virtual bool setGain(const float& target_gain, float& reached_gain) override;

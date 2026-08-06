@@ -1203,15 +1203,16 @@ void PylonROS2CameraNode::applySequenceStep(std::size_t step_index)
 
   const SequenceStep step = this->sequencer_.at(step_index);
 
-  // the plain setExposure()/setGain() wrappers retry for up to 5 s when the camera
-  // quantises a value away from the target, which would stall the stream. Per frame we
-  // write once and move on.
+  // reach through to the camera rather than the node wrappers, which retry for up to 5 s
+  // and would stall the stream. A false here usually only means the camera quantised the
+  // value, so it is not worth a per-frame warning.
   if (step.has_exposure)
   {
     float reached_exposure;
-    if (!this->pylon_camera_->setExposureFast(step.exposure, reached_exposure))
+    if (!this->pylon_camera_->setExposure(step.exposure, reached_exposure))
     {
-      RCLCPP_WARN_STREAM(LOGGER, "Failed to set exposure " << step.exposure << " us of the frame sequence");
+      RCLCPP_DEBUG_STREAM(LOGGER, "Exposure " << step.exposure << " us of the frame sequence "
+        << "was not reached exactly, camera settled on " << reached_exposure);
     }
   }
 

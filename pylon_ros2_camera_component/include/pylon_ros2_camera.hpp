@@ -211,18 +211,6 @@ public:
                              float& reached_exposure) = 0;
 
     /**
-     * Sets the exposure time without judging the result. Unlike setExposure()
-     * this reports success whenever the camera accepted the write, even if the
-     * camera quantised the value. Meant for per-frame use, where the caller
-     * cannot afford the retry loop that a 'false' triggers.
-     * @param target_exposure the desired exposure time to set in microseconds.
-     * @param reached_exposure time in microseconds
-     * @return false only if a communication error occurred.
-     */
-    virtual bool setExposureFast(const float& target_exposure,
-                                 float& reached_exposure) = 0;
-
-    /**
      * Sets autoflash active for the specified lines
      * @param flash_on_lines map from line e.g., 1 or 2 to a boolean to 
               activate or deactivate the autoflash for this line .

@@ -1084,31 +1084,37 @@ bool PylonROS2CameraImpl<CameraTraitT>::setBinningY(const size_t& target_binning
 }
 
 template <typename CameraTraitT>
-bool PylonROS2CameraImpl<CameraTraitT>::writeExposure(const float& target_exposure,
-                                                      float& reached_exposure,
-                                                      float& clamped_target)
+bool PylonROS2CameraImpl<CameraTraitT>::setExposure(const float& target_exposure,
+                                                    float& reached_exposure)
 {
     try
     {
         cam_->ExposureAuto.TrySetValue(ExposureAutoEnums::ExposureAuto_Off);
 
-        clamped_target = target_exposure;
-        if ( clamped_target < exposureTime().GetMin() )
+        float exposure_to_set = target_exposure;
+        if ( exposure_to_set < exposureTime().GetMin() )
         {
-            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << clamped_target << ") "
+            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << exposure_to_set << ") "
                 << "time unreachable! Setting to lower limit: "
                 << exposureTime().GetMin());
-            clamped_target = exposureTime().GetMin();
+            exposure_to_set = exposureTime().GetMin();
         }
-        else if ( clamped_target > exposureTime().GetMax() )
+        else if ( exposure_to_set > exposureTime().GetMax() )
         {
-            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << clamped_target << ") "
+            RCLCPP_WARN_STREAM(LOGGER_BASE, "Desired exposure (" << exposure_to_set << ") "
                 << "time unreachable! Setting to upper limit: "
                 << exposureTime().GetMax());
-            clamped_target = exposureTime().GetMax();
+            exposure_to_set = exposureTime().GetMax();
         }
-        exposureTime().SetValue(clamped_target);
+        exposureTime().SetValue(exposure_to_set);
         reached_exposure = currentExposure();
+
+        if ( std::fabs(reached_exposure - exposure_to_set) > exposureStep() )
+        {
+            // no success if the delta between target and reached exposure
+            // is greater then the exposure step in ms
+            return false;
+        }
     }
     catch ( const GenICam::GenericException &e )
     {
@@ -1118,29 +1124,6 @@ bool PylonROS2CameraImpl<CameraTraitT>::writeExposure(const float& target_exposu
         return false;
     }
     return true;
-}
-
-template <typename CameraTraitT>
-bool PylonROS2CameraImpl<CameraTraitT>::setExposureFast(const float& target_exposure,
-                                                        float& reached_exposure)
-{
-    float clamped_target;
-    return writeExposure(target_exposure, reached_exposure, clamped_target);
-}
-
-template <typename CameraTraitT>
-bool PylonROS2CameraImpl<CameraTraitT>::setExposure(const float& target_exposure,
-                                                    float& reached_exposure)
-{
-    float clamped_target;
-    if ( !writeExposure(target_exposure, reached_exposure, clamped_target) )
-    {
-        return false;
-    }
-
-    // no success if the delta between target and reached exposure
-    // is greater then the exposure step in ms
-    return std::fabs(reached_exposure - clamped_target) <= exposureStep();
 }
 
 template <typename CameraTraitT>
@@ -5062,10 +5045,34 @@ std::string PylonROS2CameraImpl<CameraTraitT>::setMultiCameraChannel(const int& 
 }
 
 template <typename CameraTraitT>
-std::string PylonROS2CameraImpl<CameraTraitT>::setAcquisitionFrameRate(const float& framerate __attribute__((unused)))
+std::string PylonROS2CameraImpl<CameraTraitT>::setAcquisitionFrameRate(const float& framerate)
 {
-    RCLCPP_DEBUG(LOGGER_BASE, "Feature not available except for blaze");
-    return "Feature not available except for blaze";
+    try
+    {
+        // ace 2 and USB expose AcquisitionFrameRate, ace 1 GigE the older AcquisitionFrameRateAbs
+        if ( GenApi::IsAvailable(cam_->AcquisitionFrameRate) )
+        {
+            cam_->AcquisitionFrameRate.SetValue(framerate);
+        }
+        else if ( GenApi::IsAvailable(cam_->AcquisitionFrameRateAbs) )
+        {
+            cam_->AcquisitionFrameRateAbs.SetValue(framerate);
+        }
+        else
+        {
+            RCLCPP_ERROR(LOGGER_BASE, "The connected camera does not support setting the acquisition frame rate");
+            return "The connected camera does not support setting the acquisition frame rate";
+        }
+
+        RCLCPP_DEBUG_STREAM(LOGGER_BASE, "Acquisition frame rate set to " << framerate);
+    }
+    catch ( const GenICam::GenericException &e )
+    {
+        RCLCPP_ERROR_STREAM(LOGGER_BASE, "An exception while changing the acquisition frame rate occurred: " << e.GetDescription());
+        return e.GetDescription();
+    }
+
+    return "done";
 }
 
 template <typename CameraTraitT>
@@ -5118,10 +5125,26 @@ std::string PylonROS2CameraImpl<CameraTraitT>::enableDistortionCorrection(const 
 }
 
 template <typename CameraTraitT>
-std::string PylonROS2CameraImpl<CameraTraitT>::enableAcquisitionFrameRate(const bool& enable __attribute__((unused)))
+std::string PylonROS2CameraImpl<CameraTraitT>::enableAcquisitionFrameRate(const bool& enable)
 {
-    RCLCPP_DEBUG(LOGGER_BASE, "Feature not available except for blaze");
-    return "Feature not available except for blaze";
+    try
+    {
+        if ( !GenApi::IsAvailable(cam_->AcquisitionFrameRateEnable) )
+        {
+            RCLCPP_ERROR(LOGGER_BASE, "The connected camera does not support enabling the acquisition frame rate");
+            return "The connected camera does not support enabling the acquisition frame rate";
+        }
+
+        cam_->AcquisitionFrameRateEnable.SetValue(enable);
+        RCLCPP_DEBUG_STREAM(LOGGER_BASE, "Acquisition frame rate " << (enable ? "enabled" : "disabled"));
+    }
+    catch ( const GenICam::GenericException &e )
+    {
+        RCLCPP_ERROR_STREAM(LOGGER_BASE, "An exception while enabling/disabling the acquisition frame rate occurred: " << e.GetDescription());
+        return e.GetDescription();
+    }
+
+    return "done";
 }
 
 template <typename CameraTraitT>
