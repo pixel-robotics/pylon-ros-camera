@@ -1026,10 +1026,29 @@ void PylonROS2CameraNode::spin()
       {
         // get actual cam_info-object in every frame, because it might have
         // changed due to a 'set_camera_info'-service call
-        sensor_msgs::msg::CameraInfo cam_info = this->camera_info_manager_->getCameraInfo();
-        cam_info.header.stamp = this->img_raw_msg_.header.stamp;
-        // publish via image_transport
-        this->img_raw_pub_.publish(this->img_raw_msg_, cam_info);
+        auto cam_info = std::make_unique<sensor_msgs::msg::CameraInfo>(this->camera_info_manager_->getCameraInfo());
+        cam_info->header.stamp = this->img_raw_msg_.header.stamp;
+        if (this->getNumSubscribersRectImagePub() > 0)
+        {
+          // the rectification below still reads img_raw_msg_: publish a copy
+          this->img_raw_pub_.publish(this->img_raw_msg_, *cam_info);
+        }
+        else
+        {
+          // Hand the pixels over instead of publishing by reference: rclcpp copies a message
+          // published by reference (8 MB per frame on a 4K mono camera). grab() refills the
+          // moved-out buffer with the next frame.
+          auto img = std::make_unique<sensor_msgs::msg::Image>();
+          img->header = this->img_raw_msg_.header;
+          img->height = this->img_raw_msg_.height;
+          img->width = this->img_raw_msg_.width;
+          img->encoding = this->img_raw_msg_.encoding;
+          img->is_bigendian = this->img_raw_msg_.is_bigendian;
+          img->step = this->img_raw_msg_.step;
+          img->data = std::move(this->img_raw_msg_.data);
+          this->img_raw_msg_.data.clear();
+          this->img_raw_pub_.publish(std::move(img), std::move(cam_info));
+        }
       }
 
       // this->getNumSubscribersRectImagePub() involves that this->camera_info_manager_->isCalibrated() == true
